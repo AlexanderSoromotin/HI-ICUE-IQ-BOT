@@ -24,7 +24,7 @@ $connection = mysqli_connect($db_url, $db_username, $db_password, $db_name);
 $connection -> set_charset("utf8");
 
 // Строка, которую должен вернуть сервер
-$confirmation_token = '34bc9c23';
+$confirmation_token = '33bc11bc';
 
 // Токен группы
 $access_token = '589b84396d5d257372844de9597ccf559f2c92c81af1e0f4547dcbecfb650663b306abc38eaa89ee4aff3';
