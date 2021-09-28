@@ -293,7 +293,8 @@ switch ($data->type) {
 			"deactive_break" => array("!тех выкл", "-тех выкл", "!выключить перерыв", "-выключить перерыв"),
 			"display_bot_status" => array("!тех статус", "-тех статус"),
 			"display_info_for_admins" => array("!тех", "-тех"),
-			"display_full_top" => array("!тех топ", "-тех топ")
+			"display_full_top" => array("!тех топ", "-тех топ"),
+			"display_activity" => array("!тех актив", "-тех актив")
 		);
 
 		function findTextInArray ($text) {
@@ -525,6 +526,104 @@ switch ($data->type) {
 ');
 		}
 
+		function removeZeroes ($text) {
+			if (substr($text, 0, 1) == 0) {
+				$text = substr($text, 1, 1);
+			}
+			return $text;
+		}
+
+
+
+		// Подсчёт активности пользователя
+		function inActivity ($date) {
+			$daysInMonths = array(
+				"1" => 31,
+				"2" => 28,
+				"3" => 31,
+				"4" => 30,
+				"5" => 31,
+				"6" => 30,
+				"7" => 31,
+				"8" => 31,
+				"9" => 30,
+				"10" => 31,
+				"11" => 30,
+				"12" => 31 
+			);
+		$current_month = (int) removeZeroes(date('m'));
+		$current_day = (int) removeZeroes(date('d'));
+		$current_year = (int) date('Y');
+
+		$lastActivity_month = (int) removeZeroes(substr($date, 4, 2));
+		$lastActivity_day = (int) removeZeroes(substr($date, 0, 2));
+		$lastActivity_year = (int) substr($date, 8, 4);
+
+		$days = 0;
+		for ($month = 1; $month < $lastActivity_month; $month++) { 
+			$days += $daysInMonths[strval($month)];
+		}
+		$days += $lastActivity_day;
+
+		$current_days = 0;
+		for ($month = 1; $month < $current_month; $month++) { 
+			$current_days += $daysInMonths[strval($month)];
+		}
+		$current_days += $current_day;
+
+		
+		// echo "<b> ( " . $days . " ) == </b>";
+		return $current_days - $days;
+	}
+
+		function display_activity () {
+			global $user_id;
+			global $chat_id;
+			global $message_text;
+			global $connection;
+			
+			$users = mysqli_query($connection, "SELECT * FROM `users`");
+			$users_array = array();
+
+			while ($u = mysqli_fetch_assoc($users)) {
+				$users_array[$u['user_id']] = $u['cmd_date'];
+			}
+
+			$inactivity_users = array();
+			foreach ($users_array as $key => $value) {
+
+				// echo $key . ' => ' . $value . ' ' . inActivity($value) . '<br>' ;
+				$inActivity = inActivity($value);
+				if ($value == "01, 01, 2021") {
+					$inactivity_users[$key] = 'none';
+
+				} else if ($inActivity > 7) {
+					$inactivity_users[$key] = $inActivity;
+				}
+				
+			}
+			$text = '';
+			$count = 0;
+			arsort($inactivity_users);
+			foreach ($inactivity_users as $key => $value) {
+				$result = mysqli_fetch_assoc(mysqli_query($connection, "SELECT * FROM `users` WHERE `user_id` = '$key'"));
+
+				if ($value == 'none') {
+					$value = "неактив.";
+				} else {
+					$value = $value . ' дн.';
+				}
+				$count++;
+				$text = $text . '[id' . $key . '|' . $result['first_name'] . ' ' . $result['last_name'] . '] (' . $value . ')
+';
+				// echo $key . ' => ' . $value . '<br>' ;
+				// $users_array[$key] = inActivity($value);
+			}
+
+			sendMessage('Сводка неактивных пользователей (' . $count . '):
+' . $text);
+		}
+
 
 
 
@@ -690,6 +789,7 @@ switch ($data->type) {
 			sendMessage('-тех вкл (вкл. перерыв)
 -тех выкл (выкл. перерыв)
 -тех статус (общие параметры)
+-тех актив (сводка неактивных пользователей)
 -тех (справка по командам)');
 		}
 
@@ -720,6 +820,10 @@ switch ($data->type) {
 		// Информация о возможностях бота
 		else if (findTextInArray($message_text) == "display_info") {
 			display_info();
+		}
+		// справка о неактивных пользователях
+		else if (findTextInArray($message_text) == "display_activity") {
+			display_activity();
 		}
 
 		if (strpos($message_text, 'jkl') !== false) {
